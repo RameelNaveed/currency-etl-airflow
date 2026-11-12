@@ -1,0 +1,65 @@
+# Extra services that Astro CLI starts next to Airflow (astro dev start).
+# Astro merges this file into its own docker compose project.
+
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: currency_mongo
+    restart: unless-stopped
+    labels:
+      com.project.name: "currency-etl-airflow"
+      com.project.service: "mongodb"
+      com.project.description: "Primary database for daily exchange rates"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: currency_db
+    ports:
+      - "27017:27017"
+    # Persistent storage: data survives astro dev stop / restart
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    # Docker networking: "airflow" lets Airflow containers reach host "mongo";
+    # "mongo_network" is a private link between MongoDB and Mongo Express
+    networks:
+      - airflow
+      - mongo_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: currency_mongo_express
+    restart: unless-stopped
+    labels:
+      com.project.name: "currency-etl-airflow"
+      com.project.service: "mongo-express"
+      com.project.description: "Web admin UI for MongoDB"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongo:27017/?authSource=admin
+      ME_CONFIG_BASICAUTH: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - mongo_network
+      - airflow
+
+networks:
+  mongo_network:
+    name: currency_mongo_network
+    driver: bridge
+
+volumes:
+  mongo_data:
+    name: currency_mongo_data
+  mongo_config:
+    name: currency_mongo_config

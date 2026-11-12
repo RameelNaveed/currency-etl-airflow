@@ -124,7 +124,7 @@ def load_to_mongodb(**context):
 
 # ---------------------------------- DAG ----------------------------------
 default_args = {
-    "owner": "shaf",
+    "owner": "Rameel",
     "retries": 2,
     "retry_delay": timedelta(minutes=2),
 }
